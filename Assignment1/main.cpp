@@ -4,15 +4,57 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-constexpr double MY_PI = 3.1415926;
+constexpr double MY_PI = 3.1415926535897;
+float angle2rad(float angle){
+    return angle / 180.0 * MY_PI;
+}
+
+Eigen::Matrix4f get_rotation(Vector3f axis, float angle)
+{
+    float x = axis.x();
+    float y = axis.y();
+    float z = axis.z();
+
+    Eigen::Matrix3f stepOne = Eigen::Matrix3f::Identity();
+    float cosA = std::cos(angle2rad(angle));
+    stepOne << cosA,    0,    0,
+                  0, cosA,    0,
+                  0,    0, cosA;
+
+    Eigen::Matrix3f stepTwo = Eigen::Matrix3f::Identity();
+    stepTwo << x * x, x * y, x * z,
+               x * y, y * y, y * z,
+               x * z, y * z, z * z;
+
+    stepTwo = (1 - cosA) * stepTwo;
+
+    Eigen::Matrix3f stepThree = Eigen::Matrix3f::Identity();
+    stepThree << 0, -z,  y,
+                 z,  0, -x,
+                -y,  x,  0;
+
+    float sinA = std::sin(angle2rad(angle));
+    stepThree = sinA * stepThree;
+
+    Eigen::Matrix3f m = stepOne + stepTwo + stepThree;
+
+    Eigen::Matrix4f result = Eigen::Matrix4f::Identity();
+    result << m(0, 0), m(0, 1), m(0, 2), 0,
+              m(1, 0), m(1, 1), m(1, 2), 0,
+              m(2, 0), m(2, 1), m(2, 2), 0,
+                    0,       0,       0, 1;
+    return result;
+}
 
 Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 {
     Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
 
     Eigen::Matrix4f translate;
-    translate << 1, 0, 0, -eye_pos[0], 0, 1, 0, -eye_pos[1], 0, 0, 1,
-        -eye_pos[2], 0, 0, 0, 1;
+    translate << 1, 0, 0, -eye_pos[0],
+                 0, 1, 0, -eye_pos[1],
+                 0, 0, 1, -eye_pos[2],
+                 0, 0, 0,           1;
 
     view = translate * view;
 
@@ -23,9 +65,11 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
 {
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
 
-    // TODO: Implement this function
-    // Create the model matrix for rotating the triangle around the Z axis.
-    // Then return it.
+    float rad = angle2rad(rotation_angle);
+    model << std::cos(rad), -std::sin(rad), 0, 0,
+             std::sin(rad),  std::cos(rad), 0, 0,
+                         0,              0, 1, 0,
+                         0,              0, 0, 1;
 
     return model;
 }
@@ -33,14 +77,16 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
                                       float zNear, float zFar)
 {
-    // Students will implement this function
-
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
 
-    // TODO: Implement this function
-    // Create the projection matrix for the given parameters.
-    // Then return it.
+    float n =  zNear;
+    float A =  zNear + zFar;
+    float B = -zNear * zFar;
 
+    projection << n, 0, 0, 0,
+                  0, n, 0, 0,
+                  0, 0, A, B,
+                  0, 0, 0, 1;
     return projection;
 }
 
@@ -93,7 +139,9 @@ int main(int argc, const char** argv)
     while (key != 27) {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
-        r.set_model(get_model_matrix(angle));
+        //r.set_model(get_model_matrix(angle));
+        Vector3f n = Vector3f(1, 1, 1);
+        r.set_model(get_rotation(n, angle));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
