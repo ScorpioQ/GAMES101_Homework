@@ -79,15 +79,31 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
 {
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
 
-    float n =  zNear;
-    float A =  zNear + zFar;
-    float B = -zNear * zFar;
+    float n =  -zNear;
+    float f =  -zFar;
 
     projection << n, 0, 0, 0,
                   0, n, 0, 0,
-                  0, 0, A, B,
-                  0, 0, 0, 1;
-    return projection;
+                  0, 0, n+f, -n*f,
+                  0, 0, 1, 0;
+
+    float fov = 3.1415926 * eye_fov / 180;
+    float t = tan(fov / 2) * fabs(n);
+    float r = aspect_ratio * t;
+    
+    Eigen::Matrix4f ortho1 = Eigen::Matrix4f::Identity();
+    ortho1 << 1, 0, 0, 0,
+              0, 1, 0, 0,
+              0, 0, 1, -(n+f)/2,
+              0, 0, 0, 1;
+
+    Eigen::Matrix4f ortho2 = Eigen::Matrix4f::Identity();
+    ortho2 << 1/r,  0,       0, 0,
+              0,  1/t,       0, 0,
+              0,    0, 2/(n-f), 0,
+              0,    0,       0, 1;
+    
+    return ortho2 * ortho1 * projection;
 }
 
 int main(int argc, const char** argv)
