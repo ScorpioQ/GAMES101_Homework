@@ -43,6 +43,26 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 static bool insideTriangle(int x, int y, const Vector3f* _v)
 {   
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
+    Vector3f pa(_v[0].x() - x, _v[0].y() - y, 0);
+    Vector3f pb(_v[1].x() - x, _v[1].y() - y, 0);
+    Vector3f pc(_v[2].x() - x, _v[2].y() - y, 0);
+    Vector3f ab(_v[1].x() - _v[0].x(), _v[1].y() - _v[0].y(), 0);
+
+    Vector3f x1 = pa.cross(pb);
+    Vector3f x2 = pb.cross(pc);
+    Vector3f x3 = pc.cross(pa);
+
+    bool same1 = x1.z() * x2.z() > 0;
+    bool same2 = x2.z() * x3.z() > 0;
+    bool same3 = x1.z() * x3.z() > 0;
+
+    return same1 && same2 && same3;
+
+    // x1.normalize();
+    // x2.normalize();
+    // x3.normalize();
+
+    //return x1 == x2 && x2 == x3;
 }
 
 static std::tuple<float, float, float> computeBarycentric2D(float x, float y, const Vector3f* v)
@@ -106,6 +126,56 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     auto v = t.toVector4();
     
+    float leftf  = t.v[0].x();
+    float rightf = t.v[0].x();
+    float upf    = t.v[0].y();
+    float downf  = t.v[0].y();
+
+    for (int i = 1; i < 3; i++)
+    {
+        if (t.v[i].x() < leftf)
+        {
+            leftf = t.v[i].x();
+        }
+        if (t.v[i].x() > rightf)
+        {
+            rightf = t.v[i].x();
+        }
+        if (t.v[i].y() > upf)
+        {
+            upf = t.v[i].y();
+        }
+        if (t.v[i].y() < downf)
+        {
+            downf = t.v[i].y();
+        }
+    }
+
+    int left  = leftf - 1;
+    int right = rightf + 1;
+    int up    = upf + 1;
+    int down  = downf - 1;
+
+    for (int i = left; i < right; i++)
+    {
+        for (int j = down; j < up; j++)
+        {
+            auto[alpha, beta, gamma] = computeBarycentric2D(i, j, t.v);
+            float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+            float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+            z_interpolated *= w_reciprocal;
+            if (insideTriangle(i, j, t.v))
+            {
+                if (-z_interpolated < depth_buf[get_index(i, j)])
+                {
+                    depth_buf[get_index(i, j)] = -z_interpolated;
+                    Vector3f p(i, j, 0);
+                    set_pixel(p, t.getColor());
+                }
+            }
+        }
+    }
+
     // TODO : Find out the bounding box of current triangle.
     // iterate through the pixel and find if the current pixel is inside the triangle
 

@@ -5,6 +5,8 @@
 #include "global.hpp"
 #include "Triangle.hpp"
 
+// cmake -DOpenCV_DIR="/Users/bytedance/cpp/opencv/build" ..
+
 constexpr double MY_PI = 3.1415926;
 
 Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
@@ -31,8 +33,16 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Copy-paste your implementation from the previous assignment.
-    Eigen::Matrix4f projection;
+    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
 
+    float n =  zNear;
+    float A =  zNear + zFar;
+    float B = -zNear * zFar;
+
+    projection << n, 0, 0, 0,
+                  0, n, 0, 0,
+                  0, 0, A, B,
+                  0, 0, 0, 1;
     return projection;
 }
 
